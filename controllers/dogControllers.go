@@ -178,9 +178,28 @@ func DeleteDog(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
+
+	if delResult.DeletedCount == 0 {
+		message := "The dog with ID " + dogId + " has not been deleted from the DB or does not exist"
+		count := delResult.DeletedCount
+		res := resMessage{
+			Message: message,
+			Count: count,
+		}
+		finalRes, err := json.Marshal(res)
+		if err != nil {
+			w.Header().Set("Content-Type", "pkglication/json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(finalRes)
+		return
+	}
 	
 	message := "The dog with ID " + dogId + " has been deleted from the DB"
-
 	delCont := delResult.DeletedCount
 
 	res := resMessage{
@@ -250,13 +269,32 @@ func UpdateDog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	message := "The dog with ID " + dogId + " has been updated in the DB"
+	if updDog.ModifiedCount == 0 {
+		message := "The dog with ID " + dogId + " has not updated in the DB or does not exist"
+		count := updDog.ModifiedCount
+		res := resMessage{
+			Message: message,
+			Count: count,
+		}
+		finalRes, err := json.Marshal(res)
+		if err != nil {
+			w.Header().Set("Content-Type", "pkglication/json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(finalRes)
+		return
+	}
 
-	modCont := updDog.ModifiedCount
+	message := "The dog with ID " + dogId + " has been updated in the DB"
+	count := updDog.ModifiedCount
 
 	res := resMessage{
 		Message: message,
-		Count: modCont,
+		Count: count,
 	}
 
 	finalRes, err := json.Marshal(res)
