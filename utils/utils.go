@@ -7,9 +7,17 @@ import (
 	"net/http"
 	"reflect"
 	"time"
-	// "reflect"
-	// "time"
 )
+
+type ErrMessageRes struct {
+	Message string `json:"message"`
+	RawErrorMessage string `json:"raw err message"`
+}
+
+type ResMessage struct {
+	Message string `json:"message"`
+	Count int64 `json:"count"`
+}
 
 func ParseBody(r *http.Request, x interface{}) error{
 	body, err := ioutil.ReadAll(r.Body)
@@ -33,3 +41,19 @@ func TimeParser(s interface{}) (*time.Time, error){
 	}
 	return &t, nil
 }
+
+func ErrorHandlerDogs(w http.ResponseWriter, err error, message string) {
+	if err != nil {
+		errMessage := ErrMessageRes {
+			Message: message,
+			RawErrorMessage: err.Error(),
+		}
+		errMes, _:= json.Marshal(errMessage)
+
+		w.Header().Set("Content-Type", "pkglication/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(errMes)
+	}
+}
+
+func JSONResponse(w http.ResponseWriter, )
