@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -20,12 +19,7 @@ import (
 
 
 var newDog models.DogRequest
-type resMessage struct {
-	Message string `json:"message"`
-	Count int64 `json:"count"`
-}
 var dogCollection *mongo.Collection = configs.GetCollection(configs.DB, "dogs")
-
 var validate = validator.New()
 
 func CreateDog(w http.ResponseWriter, r *http.Request) {
@@ -36,26 +30,19 @@ func CreateDog(w http.ResponseWriter, r *http.Request) {
 	// parse the dog data from the request to the newDog location.
 	err := utils.ParseBody(r, &newDog)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		fmt.Print(err)
+		utils.ErrorHandlerDogs(w, err, "There was an error parsing the data")
 		return
 	}
+
 	if validationErr := validate.Struct((&newDog)); validationErr != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(validationErr.Error()))
+		utils.ErrorHandlerDogs(w, validationErr, "There was an error validating your data")
 		return
 	}
 
 	// add the data to the mongo 
 	newDogTime, err := utils.TimeParser(&newDog)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		fmt.Print(err)
+		utils.ErrorHandlerDogs(w, err, "There was an issue parsing the given time")
 		return
 	}
 	createDog := models.Dog{
@@ -67,17 +54,13 @@ func CreateDog(w http.ResponseWriter, r *http.Request) {
 
 	resultDog, err := dogCollection.InsertOne(ctx, createDog)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error entering the data into the DB")
 		return
 	}
 
 	res, err:=json.Marshal(resultDog)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error marshalling the data")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -95,25 +78,19 @@ func GetDogById(w http.ResponseWriter, r *http.Request) {
 
 	objId, err := primitive.ObjectIDFromHex(dogId)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error while trying to convert the ID to HEX")
 		return
 	}
 
 	findErr := dogCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&dog)
 	if findErr != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, findErr, "There was an issue finding this object in the DB")
 		return
 	}
 
-	res, err:=json.Marshal(dog)
+	res, err :=json.Marshal(dog)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error marshalling the data")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -128,28 +105,22 @@ func GetAllDogs(w http.ResponseWriter, r * http.Request) {
 	var allDogs[] models.Dog
 	results, err := dogCollection.Find(ctx, bson.M{})
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error retriving the data")
 		return
 	}
 	defer results.Close(ctx)
 	for results.Next(ctx) {
 		var dog models.Dog
 		if err = results.Decode(&dog); err != nil {
-			w.Header().Set("Content-Type", "pkglication/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
-			return	
+			utils.ErrorHandlerDogs(w, err, "There an error decoding the data")
+			return
 		}
 		allDogs = append(allDogs, dog)
 	}
 
 	res, err := json.Marshal(allDogs)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error marshalling the data")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -165,33 +136,44 @@ func DeleteDog(w http.ResponseWriter, r *http.Request) {
 	dogId := params["dogId"]
 	objId, err := primitive.ObjectIDFromHex(dogId)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error while trying to convert the ID to HEX")
 		return
 	}
 
 	delResult, err := dogCollection.DeleteOne(ctx, bson.M{"_id": objId})
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
+		utils.ErrorHandlerDogs(w, err, "There was an error while deleting this Obj")
+		return
+	}
+
+	if delResult.DeletedCount == 0 {
+		message := "The dog with ID " + dogId + " has not been deleted from the DB or does not exist"
+		count := delResult.DeletedCount
+		res := utils.ResMessage{
+			Message: message,
+			Count: count,
+		}
+		finalRes, err := json.Marshal(res)
+		if err != nil {
+			utils.ErrorHandlerDogs(w, err, "There was an error marshalling the data")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		w.Write(finalRes)
 		return
 	}
 	
 	message := "The dog with ID " + dogId + " has been deleted from the DB"
-
 	delCont := delResult.DeletedCount
 
-	res := resMessage{
+	res := utils.ResMessage{
 		Message: message,
 		Count: delCont,
 	}
 	finalRes, err := json.Marshal(res)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error marshalling the data")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -207,32 +189,23 @@ func UpdateDog(w http.ResponseWriter, r *http.Request) {
 	dogId := params["dogId"]
 	objId, err := primitive.ObjectIDFromHex(dogId)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error while trying to convert the ID to HEX")
 		return
 	}
 
 	err = utils.ParseBody(r, &newDog)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error parsing the data")
 		return
 	}
 
 	if err = validate.Struct((&newDog)); err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error validating your data")
 		return
 	}
 	newDogTime, err := utils.TimeParser(&newDog)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		fmt.Print(err)
+		utils.ErrorHandlerDogs(w, err, "There was an issue parsing the given time")
 		return
 	}
 
@@ -244,37 +217,42 @@ func UpdateDog(w http.ResponseWriter, r *http.Request) {
 
 	updDog, err := dogCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
+		utils.ErrorHandlerDogs(w, err, "There was an error while updating the data")
+		return
+	}
+
+	if updDog.ModifiedCount == 0 {
+		message := "The dog with ID " + dogId + " has not updated in the DB or does not exist"
+		count := updDog.ModifiedCount
+		res := utils.ResMessage{
+			Message: message,
+			Count: count,
+		}
+		finalRes, err := json.Marshal(res)
+		if err != nil {
+			utils.ErrorHandlerDogs(w, err, "There was an error marshalling the data")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		w.Write(finalRes)
 		return
 	}
 
 	message := "The dog with ID " + dogId + " has been updated in the DB"
+	count := updDog.ModifiedCount
 
-	modCont := updDog.ModifiedCount
-
-	res := resMessage{
+	res := utils.ResMessage{
 		Message: message,
-		Count: modCont,
+		Count: count,
 	}
 
 	finalRes, err := json.Marshal(res)
 	if err != nil {
-		w.Header().Set("Content-Type", "pkglication/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		utils.ErrorHandlerDogs(w, err, "There was an error marshalling the data")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(finalRes)
 }
-
-
-
-
-
-
-
-
