@@ -24,6 +24,7 @@ var validate = validator.New()
 
 func CreateDog(w http.ResponseWriter, r *http.Request) {
 	//create context that this function will use
+	var newDog models.DogRequest
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	
@@ -88,7 +89,7 @@ func GetDogById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err :=json.Marshal(dog)
+	res, err := json.Marshal(dog)
 	if err != nil {
 		utils.ErrorHandlerDogs(w, err, "There was an error marshalling the data")
 		return
@@ -99,7 +100,7 @@ func GetDogById(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAllDogs(w http.ResponseWriter, r * http.Request) {
-	ctx, cancel := context .WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var allDogs[] models.Dog

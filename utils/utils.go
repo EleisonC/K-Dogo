@@ -56,4 +56,3 @@ func ErrorHandlerDogs(w http.ResponseWriter, err error, message string) {
 	}
 }
 
-func JSONResponse(w http.ResponseWriter, )
