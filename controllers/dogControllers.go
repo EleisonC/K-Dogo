@@ -121,8 +121,15 @@ func GetAllDogs(w http.ResponseWriter, r * http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	params := mux.Vars(r)
+	ownerId := params["ownerId"]
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
+
 	var allDogs[] models.Dog
-	results, err := dogCollection.Find(ctx, bson.M{})
+	results, err := dogCollection.Find(ctx, bson.M{"ownerId": ownerId})
 	if err != nil {
 		utils.ErrorHandlerDogs(w, err, "There was an error retriving the data")
 		return
@@ -151,6 +158,11 @@ func DeleteDog(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context .WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	params := mux.Vars(r)
+	ownerId := params["ownerId"]
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
 
 	dogId := params["dogId"]
 	objId, err := primitive.ObjectIDFromHex(dogId)
@@ -159,7 +171,7 @@ func DeleteDog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	delResult, err := dogCollection.DeleteOne(ctx, bson.M{"_id": objId})
+	delResult, err := dogCollection.DeleteOne(ctx, bson.M{"_id": objId, "ownerId": ownerId})
 	if err != nil {
 		utils.ErrorHandlerDogs(w, err, "There was an error while deleting this Obj")
 		return
