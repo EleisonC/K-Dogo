@@ -47,18 +47,19 @@ func TimeParser(s interface{}) (*time.Time, error){
 	return &t, nil
 }
 
-func ValidateOwner(ownerId string, w http.ResponseWriter, ctx context.Context, dogOwnerCol *mongo.Collection) {
+func ValidateOwner(ownerId string, w http.ResponseWriter, ctx context.Context, dogOwnerCol *mongo.Collection) error {
 	ownerIdHex, err := primitive.ObjectIDFromHex(ownerId)
 	if err != nil {
-		ErrorHandlerDogs(w, err, "Error Un Known User")
-		return
+		ErrorHandlerDogs(w, err, "Error Can Not Convert")
+		return err
 	}
 	filter := bson.D{{Key: "_id", Value: ownerIdHex}}
 	ownerIdCount, err := dogOwnerCol.CountDocuments(ctx, filter)
 	if err != nil || ownerIdCount == 0 {
 		ErrorHandlerDogs(w, err, "Error Un Known User")
-		return
+		return err
 	}
+	return nil
 }
 
 func ErrorHandlerDogs(w http.ResponseWriter, err error, message string) {
@@ -73,5 +74,6 @@ func ErrorHandlerDogs(w http.ResponseWriter, err error, message string) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write(errMes)
 	}
+	return
 }
 

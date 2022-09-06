@@ -34,10 +34,13 @@ func CreateDog(w http.ResponseWriter, r *http.Request) {
 	//convert the ID or hEX | validate User Id
 	params := mux.Vars(r)
 	ownerId := params["ownerId"] // afte this 
-	utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
 	
 	// parse the dog data from the request to the newDog location.
-	err := utils.ParseBody(r, &newDog)
+	err = utils.ParseBody(r, &newDog)
 	if err != nil {
 		utils.ErrorHandlerDogs(w, err, "There was an error parsing the data")
 		return
@@ -84,6 +87,12 @@ func GetDogById(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
 	dogId := params["dogId"]
+	ownerId := params["ownerId"]
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
+	
 	var dog models.Dog
 
 	objId, err := primitive.ObjectIDFromHex(dogId)
@@ -92,7 +101,7 @@ func GetDogById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	findErr := dogCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&dog)
+	findErr := dogCollection.FindOne(ctx, bson.D{{Key: "_id", Value: objId}, {Key: "ownerId", Value: ownerId}}).Decode(&dog)
 	if findErr != nil {
 		utils.ErrorHandlerDogs(w, findErr, "There was an issue finding this object in the DB")
 		return
