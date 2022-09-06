@@ -1,12 +1,17 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"net/http"
 	"reflect"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type ErrMessageRes struct {
@@ -40,6 +45,20 @@ func TimeParser(s interface{}) (*time.Time, error){
 		return nil, errors.New("failed to parse date field:" + err.Error())
 	}
 	return &t, nil
+}
+
+func ValidateOwner(ownerId string, w http.ResponseWriter, ctx context.Context, dogOwnerCol *mongo.Collection) {
+	ownerIdHex, err := primitive.ObjectIDFromHex(ownerId)
+	if err != nil {
+		ErrorHandlerDogs(w, err, "Error Un Known User")
+		return
+	}
+	filter := bson.D{{Key: "_id", Value: ownerIdHex}}
+	ownerIdCount, err := dogOwnerCol.CountDocuments(ctx, filter)
+	if err != nil || ownerIdCount == 0 {
+		ErrorHandlerDogs(w, err, "Error Un Known User")
+		return
+	}
 }
 
 func ErrorHandlerDogs(w http.ResponseWriter, err error, message string) {

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 
 var newDog models.DogRequest
 var dogCollection *mongo.Collection = configs.GetCollection(configs.DB, "dogs")
+var dogOwnerCol *mongo.Collection = configs.GetCollection(configs.DB, "DogOwner")
 var validate = validator.New()
 
 func CreateDog(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +29,12 @@ func CreateDog(w http.ResponseWriter, r *http.Request) {
 	var newDog models.DogRequest
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	fmt.Println("I GOT HERE")
+ 
+	//convert the ID or hEX | validate User Id
+	params := mux.Vars(r)
+	ownerId := params["ownerId"] // afte this 
+	utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
 	
 	// parse the dog data from the request to the newDog location.
 	err := utils.ParseBody(r, &newDog)
@@ -51,6 +59,7 @@ func CreateDog(w http.ResponseWriter, r *http.Request) {
 		Breed: newDog.Breed,
 		DateOfBirth: *newDogTime,
 		Sex: newDog.Sex,
+		OwnerId: ownerId,
 	}
 
 	resultDog, err := dogCollection.InsertOne(ctx, createDog)
