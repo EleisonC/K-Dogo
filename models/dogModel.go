@@ -16,6 +16,7 @@ type Dog struct {
 	DateOfBirth  time.Time `bson:"dateofbirth,omitempty" validate:"required"`
 	Sex string `bson:"sex,omitempty" validate:"required"`
 	TrainerId string `bson:"trainerId,omitempty"`
+	OwnerId string `bson:"ownerId,omitempty" validate:"required"`
 	// Vacination []DogVaccines `json:"vaccinations"`
 }
 
@@ -25,6 +26,7 @@ type DogRequest struct {
 	DateOfBirth  string `json:"dateofbirth,omitempty" validate:"required"`
 	Sex string `json:"sex,omitempty" validate:"required"`
 	TrainerId string `bson:"trainerId,omitempty"`
+	OwnerId string `bson:"ownerId,omitempty"`
 	// Vacination []DogVaccines `json:"vaccinations"`
 }
 
@@ -34,6 +36,7 @@ type UpdateDogRequest struct {
 	DateOfBirth  *time.Time `json:"dateofbirth,omitempty"`
 	Sex *string `json:"sex,omitempty"`
 	TrainerId string `bson:"trainerId,omitempty"`
+	OwnerId  string `bson:"ownerId,omitempty" validate:"required"`
 	// Vacination []DogVaccines `json:"vaccinations"`
 }
 

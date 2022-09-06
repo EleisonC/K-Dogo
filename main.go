@@ -15,5 +15,5 @@ func main(){
 	http.Handle("/", r)
 	// start the Database connection
 	configs.ConnectDB()
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":8082", r))
 }

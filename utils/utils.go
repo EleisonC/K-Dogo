@@ -1,12 +1,17 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"net/http"
 	"reflect"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type ErrMessageRes struct {
@@ -42,6 +47,21 @@ func TimeParser(s interface{}) (*time.Time, error){
 	return &t, nil
 }
 
+func ValidateOwner(ownerId string, w http.ResponseWriter, ctx context.Context, dogOwnerCol *mongo.Collection) error {
+	ownerIdHex, err := primitive.ObjectIDFromHex(ownerId)
+	if err != nil {
+		ErrorHandlerDogs(w, err, "Error Can Not Convert")
+		return err
+	}
+	filter := bson.D{{Key: "_id", Value: ownerIdHex}}
+	ownerIdCount, err := dogOwnerCol.CountDocuments(ctx, filter)
+	if err != nil || ownerIdCount == 0 {
+		ErrorHandlerDogs(w, err, "Error Un Known User")
+		return err
+	}
+	return nil
+}
+
 func ErrorHandlerDogs(w http.ResponseWriter, err error, message string) {
 	if err != nil {
 		errMessage := ErrMessageRes {
@@ -54,5 +74,6 @@ func ErrorHandlerDogs(w http.ResponseWriter, err error, message string) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write(errMes)
 	}
+	return
 }
 

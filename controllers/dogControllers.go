@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 
 var newDog models.DogRequest
 var dogCollection *mongo.Collection = configs.GetCollection(configs.DB, "dogs")
+var dogOwnerCol *mongo.Collection = configs.GetCollection(configs.DB, "DogOwner")
 var validate = validator.New()
 
 func CreateDog(w http.ResponseWriter, r *http.Request) {
@@ -27,9 +29,18 @@ func CreateDog(w http.ResponseWriter, r *http.Request) {
 	var newDog models.DogRequest
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	fmt.Println("I GOT HERE")
+ 
+	//convert the ID or hEX | validate User Id
+	params := mux.Vars(r)
+	ownerId := params["ownerId"] // afte this 
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
 	
 	// parse the dog data from the request to the newDog location.
-	err := utils.ParseBody(r, &newDog)
+	err = utils.ParseBody(r, &newDog)
 	if err != nil {
 		utils.ErrorHandlerDogs(w, err, "There was an error parsing the data")
 		return
@@ -51,6 +62,7 @@ func CreateDog(w http.ResponseWriter, r *http.Request) {
 		Breed: newDog.Breed,
 		DateOfBirth: *newDogTime,
 		Sex: newDog.Sex,
+		OwnerId: ownerId,
 	}
 
 	resultDog, err := dogCollection.InsertOne(ctx, createDog)
@@ -75,6 +87,12 @@ func GetDogById(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
 	dogId := params["dogId"]
+	ownerId := params["ownerId"]
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
+	
 	var dog models.Dog
 
 	objId, err := primitive.ObjectIDFromHex(dogId)
@@ -83,7 +101,7 @@ func GetDogById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	findErr := dogCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&dog)
+	findErr := dogCollection.FindOne(ctx, bson.D{{Key: "_id", Value: objId}, {Key: "ownerId", Value: ownerId}}).Decode(&dog)
 	if findErr != nil {
 		utils.ErrorHandlerDogs(w, findErr, "There was an issue finding this object in the DB")
 		return
@@ -103,8 +121,15 @@ func GetAllDogs(w http.ResponseWriter, r * http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	params := mux.Vars(r)
+	ownerId := params["ownerId"]
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
+
 	var allDogs[] models.Dog
-	results, err := dogCollection.Find(ctx, bson.M{})
+	results, err := dogCollection.Find(ctx, bson.M{"ownerId": ownerId})
 	if err != nil {
 		utils.ErrorHandlerDogs(w, err, "There was an error retriving the data")
 		return
@@ -133,6 +158,11 @@ func DeleteDog(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context .WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	params := mux.Vars(r)
+	ownerId := params["ownerId"]
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
 
 	dogId := params["dogId"]
 	objId, err := primitive.ObjectIDFromHex(dogId)
@@ -141,7 +171,7 @@ func DeleteDog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	delResult, err := dogCollection.DeleteOne(ctx, bson.M{"_id": objId})
+	delResult, err := dogCollection.DeleteOne(ctx, bson.M{"_id": objId, "ownerId": ownerId})
 	if err != nil {
 		utils.ErrorHandlerDogs(w, err, "There was an error while deleting this Obj")
 		return
@@ -187,6 +217,13 @@ func UpdateDog(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	params := mux.Vars(r)
+
+	ownerId := params["ownerId"]
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
+
 	dogId := params["dogId"]
 	objId, err := primitive.ObjectIDFromHex(dogId)
 	if err != nil {
@@ -210,7 +247,7 @@ func UpdateDog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter := bson.D{{Key: "_id", Value: objId}}
+	filter := bson.D{{Key: "_id", Value: objId}, {Key: "ownerId", Value: ownerId}}
 	update := bson.D{{Key:"$set", Value: bson.D{{Key: "name", Value: newDog.Name}, 
 	{Key: "breed", Value: newDog.Breed}, {Key: "dateofbirth", Value: *newDogTime}, 
 	{Key: "sex", Value: newDog.Sex}}}}
