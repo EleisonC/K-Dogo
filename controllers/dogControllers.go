@@ -217,6 +217,13 @@ func UpdateDog(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	params := mux.Vars(r)
+
+	ownerId := params["ownerId"]
+	err := utils.ValidateOwner(ownerId, w, ctx, dogOwnerCol)
+	if err != nil {
+		return
+	}
+
 	dogId := params["dogId"]
 	objId, err := primitive.ObjectIDFromHex(dogId)
 	if err != nil {
@@ -240,7 +247,7 @@ func UpdateDog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter := bson.D{{Key: "_id", Value: objId}}
+	filter := bson.D{{Key: "_id", Value: objId}, {Key: "ownerId", Value: ownerId}}
 	update := bson.D{{Key:"$set", Value: bson.D{{Key: "name", Value: newDog.Name}, 
 	{Key: "breed", Value: newDog.Breed}, {Key: "dateofbirth", Value: *newDogTime}, 
 	{Key: "sex", Value: newDog.Sex}}}}

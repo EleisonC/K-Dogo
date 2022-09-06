@@ -11,5 +11,5 @@ var RegisterDogRoutes = func(router *mux.Router) {
 	router.HandleFunc("/{ownerId}/getdog/{dogId}", controllers.GetDogById).Methods("GET")
 	router.HandleFunc("/{ownerId}/getdogs", controllers.GetAllDogs).Methods("GET")
 	router.HandleFunc("/{ownerId}/deletedog/{dogId}", controllers.DeleteDog).Methods("DELETE")
-	router.HandleFunc("/updatedog/{dogId}", controllers.UpdateDog).Methods("PUT")
+	router.HandleFunc("/{ownerId}/updatedog/{dogId}", controllers.UpdateDog).Methods("PUT")
 }
